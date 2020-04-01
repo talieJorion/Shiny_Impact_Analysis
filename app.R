@@ -1,6 +1,31 @@
-library(shiny)
-library(datasets)
-library(ggplot2)
+###########################################################
+## Script name: app.R                                    ##
+##                                                       ##
+## Purpose:     Run impact analysis on candidate scores  ##
+##              Input csv file with scores               ##
+##              Outputs histogram                        ##
+##              Input cut score and SE                   ##
+##              Outputs passing rate                     ##
+##                                                       ##
+## Author:      Natalie Jorion                           ##    
+##                                                       ##  
+## Date:        2020-03-30                               ##
+###########################################################
+
+
+##### Install required libraries ####
+
+packs <- c("shiny", "datasets", "ggplot2")
+
+lapply(packs,function(x) {
+  if(x %in% rownames(installed.packages())==FALSE)
+  {install.packages(x)
+    sapply(x,library,character.only=TRUE)}
+  else{sapply(x,library,character.only=TRUE)}
+}) 
+
+
+#Function for ggplot histogram to specify integer bins
 int_breaks <- function(x, n = 5) pretty(x, n)[pretty(x, n) %% 1 == 0] 
 
 ui <- shinyUI(fluidPage(
@@ -64,7 +89,7 @@ server <- shinyServer(function(input, output, session) {
       
           Scores <- data()[2]
           
-          status <- factor(ifelse(Scores[1]>input$cut_score, "Pass", "Fail"))
+          status <- factor(ifelse(Scores[1]>(input$cut_score-0.01), "Pass", "Fail"))
       
                  p <- ggplot(Scores, aes_string(x=Scores[,1], fill = status)) +
                  geom_histogram(binwidth=1, colour="dark gray", position = "identity") +
@@ -74,7 +99,7 @@ server <- shinyServer(function(input, output, session) {
                  scale_fill_manual(values = c("Pass" = "#32CD32", "Fail" = "red")) +
                  xlim(0, input$max_score) +
                  scale_y_continuous(expand = expand_scale(mult=c(0, 0.5)), breaks = int_breaks) +
-                 geom_vline(xintercept = input$cut_score, linetype = "dashed", color = "red", size = 1) +
+                 geom_vline(xintercept = (input$cut_score-0.5), linetype = "dashed", color = "red", size = 1) +
                  theme_bw(base_size = 25) 
             
             print(p)
@@ -85,7 +110,7 @@ server <- shinyServer(function(input, output, session) {
         paste0("<h4>",
                "When the cut score is set to ", 
                "<strong>", input$cut_score, "</strong>",", ", 
-               (sum(data()[2]>input$cut_score)/nrow(data()))*100,
+               (sum(data()[2]>(input$cut_score-0.01))/nrow(data()))*100,
                "% of candidates will pass the exam.",
                "</h4>")
     })
@@ -95,11 +120,11 @@ server <- shinyServer(function(input, output, session) {
       paste0("<h4>",
              "When the cut score is increased by one standard error (", 
              "<strong>", input$cut_score+input$standard_error, "</strong>","), ", 
-             (sum(data()[2]>(input$cut_score+input$standard_error))/nrow(data()))*100,
+             (sum(data()[2]>((input$cut_score-0.01)+input$standard_error))/nrow(data()))*100,
              "% of candidates will pass the exam.","<br><br>",
              "When the cut score is decreased by one standard error (", 
              "<strong>", input$cut_score-input$standard_error, "</strong>","), ", 
-             (sum(data()[2]>(input$cut_score-input$standard_error))/nrow(data()))*100,
+             (sum(data()[2]>((input$cut_score-0.01)-input$standard_error))/nrow(data()))*100,
              "% of candidates will pass the exam.","<br>",
              "</h4>")
       } else {
